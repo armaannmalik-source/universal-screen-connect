@@ -311,16 +311,15 @@ async function handleSignal(data) {
 
 async function startReceiver() {
   try {
-    const code = generateCode();
-    room.textContent = code;
+    document.getElementById("status").textContent = "Testing Supabase...";
 
-    setStatus("Connecting to server...");
+    await createChannel("TEST1234", "receiver");
 
-    await createChannel(code, "receiver");
-
-    setStatus("TV ready! Waiting for computer...");
+    document.getElementById("status").textContent =
+      "SUPABASE CONNECTED!";
   } catch (error) {
-    setStatus(error.message);
+    document.getElementById("status").textContent =
+      "ERROR: " + error.message;
   }
 }
 
