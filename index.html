@@ -394,7 +394,7 @@ async function disconnect() {
   if (channel) {
     const oldChannel = channel;
     channel = null;
-    await supabase.removeChannel(oldChannel);
+    await supabaseClient.removeChannel(oldChannel);
   }
 
   remoteCandidates = [];
