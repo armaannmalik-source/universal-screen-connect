@@ -169,6 +169,16 @@ var SUPABASE_KEY =
 "sb_publishable_jkkKbQ3KIVowW5yYiG5dNQ_JyFFilaR";
 
 var supabaseClient = null;
+  var libraryStatus =
+  document.getElementById("receiverStatus");
+
+if (window.supabase) {
+  libraryStatus.textContent =
+    "Supabase object found!";
+} else {
+  libraryStatus.textContent =
+    "Supabase object NOT found!";
+}
 
 if (window.supabase &&
     typeof window.supabase.createClient === "function") {
