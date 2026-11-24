@@ -140,19 +140,23 @@ let activeCode = null;
 // INTERFACE
 // ========================================
 
+
 function showReceiver() {
   currentRole = "receiver";
-  home.classList.add("hidden");
-  sender.classList.add("hidden");
-  receiver.classList.remove("hidden");
+
+  document.getElementById("home").classList.add("hidden");
+  document.getElementById("sender").classList.add("hidden");
+  document.getElementById("receiver").classList.remove("hidden");
+
   startReceiver();
 }
 
 function showSender() {
-  home.classList.add("hidden");
-  receiver.classList.add("hidden");
-  sender.classList.remove("hidden");
+  document.getElementById("home").classList.add("hidden");
+  document.getElementById("receiver").classList.add("hidden");
+  document.getElementById("sender").classList.remove("hidden");
 }
+
 
 // ========================================
 // ROOM CODE
@@ -411,7 +415,7 @@ async function disconnect() {
 // ========================================
 
 function setStatus(message) {
-  status.textContent = message;
+  document.getElementById("status").textContent = message;
 }
 
 function toggleFullscreen() {
