@@ -148,7 +148,13 @@ function showReceiver() {
   document.getElementById("sender").classList.add("hidden");
   document.getElementById("receiver").classList.remove("hidden");
 
-  startReceiver();
+  document.getElementById("room").textContent = generateCode();
+  document.getElementById("status").textContent = "Receiver screen opened!";
+
+  startReceiver().catch(function(error) {
+    document.getElementById("status").textContent =
+      "Connection error: " + error.message;
+  });
 }
 
 function showSender() {
