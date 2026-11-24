@@ -1,0 +1,35 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>TV Compatibility Test</title>
+</head>
+<body style="background:#101827;color:white;font-family:Arial;padding:25px">
+
+<h2>TV Browser Compatibility</h2>
+<div id="results">Testing...</div>
+
+<script>
+var result = document.getElementById("results");
+
+var tests = [
+  ["JavaScript", typeof window === "object"],
+  ["WebRTC", typeof window.RTCPeerConnection === "function"],
+  ["Media playback", typeof document.createElement("video").play === "function"],
+  ["WebSocket", typeof window.WebSocket === "function"],
+  ["Promises", typeof window.Promise === "function"]
+];
+
+result.innerHTML = "";
+
+tests.forEach(function(test) {
+  var p = document.createElement("p");
+  p.innerHTML = test[0] + ": " + (test[1] ? "SUPPORTED" : "NOT SUPPORTED");
+  p.style.color = test[1] ? "#62e6ae" : "#ff7777";
+  result.appendChild(p);
+});
+</script>
+
+</body>
+</html>
