@@ -120,7 +120,7 @@ video {
 const SUPABASE_URL = "https://luihrwntwtyleeqlwqtv.supabase.co";
 const SUPABASE_KEY = "sb_publishable_jkkKbQ3KIVowW5yYiG5dNQ_JyFFilaR";
 
-const supabase = window.supabase.createClient(
+const supabaseClient = window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_KEY
 );
@@ -178,7 +178,7 @@ function generateCode() {
 async function createChannel(code, role) {
   activeCode = code;
 
-  channel = supabase.channel("usc-" + code, {
+  channel = supabaseClient.channel("usc-" + code, {
     config: {
       broadcast: { self: false, ack: true }
     }
