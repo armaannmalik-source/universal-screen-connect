@@ -142,12 +142,13 @@ let activeCode = null;
 
 
 function showReceiver() {
+  currentRole = "receiver";
+
   document.getElementById("home").classList.add("hidden");
   document.getElementById("sender").classList.add("hidden");
   document.getElementById("receiver").classList.remove("hidden");
 
-  document.getElementById("room").textContent = "TEST1234";
-  document.getElementById("status").textContent = "Receiver page opened!";
+  startReceiver();
 }
 
 function showSender() {
