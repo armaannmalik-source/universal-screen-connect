@@ -22,10 +22,11 @@ body {
 
 header { padding: 25px 15px; }
 
-h1 { color: #62e6ae; margin-bottom: 8px; }
+h1 { color: #62e6ae; }
 
 .container {
-  width: min(92%, 650px);
+  width: 92%;
+  max-width: 650px;
   margin: 15px auto;
   padding: 25px;
   background: #1c293b;
@@ -48,15 +49,18 @@ button {
   cursor: pointer;
 }
 
-button:disabled { opacity: .5; cursor: not-allowed; }
+.secondary {
+  background: #34445b;
+  color: white;
+}
 
-input { background: #edf2f7; color: #111; }
+.hidden { display: none !important; }
 
-.secondary { background: #34445b; color: white; }
-
-.hidden { display: none; }
-
-#status { color: #62e6ae; min-height: 24px; }
+.status {
+  color: #62e6ae;
+  min-height: 24px;
+  overflow-wrap: anywhere;
+}
 
 #room {
   font-size: 32px;
@@ -73,212 +77,317 @@ video {
   margin-top: 12px;
 }
 
-#remoteVideo { max-height: 70vh; }
-
 </style>
 </head>
 
 <body>
 
 <header>
-  <h1>Universal Screen Connect</h1>
-  <p>Wireless screen sharing for Windows, Mac and Smart TVs</p>
+<h1>Universal Screen Connect</h1>
+<p>Wireless screen sharing for Windows and Mac</p>
 </header>
 
 <div class="container" id="home">
-  <h2>Choose your device</h2>
-  <button onclick="showReceiver()">TV Receiver</button>
-  <button onclick="showSender()">Computer Sender</button>
-  <p id="status">Ready to connect</p>
+<h2>Choose your device</h2>
+
+<button onclick="showReceiver()">TV Receiver</button>
+<button onclick="showSender()">Computer Sender</button>
+
+<p class="status" id="homeStatus">Ready</p>
 </div>
 
 <div class="container hidden" id="receiver">
-  <h2>TV Receiver</h2>
-  <p>Your room code is:</p>
-  <div id="room">--------</div>
-  <p>Enter this code on your computer.</p>
-  <video id="remoteVideo" autoplay playsinline></video>
-  <button class="secondary" onclick="toggleFullscreen()">Fullscreen</button>
-  <button class="secondary" onclick="disconnect()">Disconnect</button>
+
+<h2>TV Receiver</h2>
+
+<p>Your room code is:</p>
+
+<div id="room">TEST1234</div>
+
+<p>Enter this code on your computer.</p>
+
+<p class="status" id="receiverStatus">
+Receiver screen opened!
+</p>
+
+<button onclick="startReceiver()">
+Test Server Connection
+</button>
+
+<video id="remoteVideo" autoplay playsinline controls></video>
+
+<button class="secondary" onclick="toggleFullscreen()">
+Fullscreen
+</button>
+
+<button class="secondary" onclick="disconnect()">
+Disconnect
+</button>
+
 </div>
 
 <div class="container hidden" id="sender">
-  <h2>Computer Sender</h2>
-  <p>Enter the room code displayed on your TV.</p>
-  <input id="roomInput" maxlength="8" placeholder="8-character room code">
-  <button onclick="startSender()">Connect and Share Screen</button>
-  <video id="localVideo" autoplay muted playsinline></video>
-  <button class="secondary" onclick="disconnect()">Disconnect</button>
+
+<h2>Computer Sender</h2>
+
+<p>Enter the room code displayed on your TV.</p>
+
+<input id="roomInput" maxlength="8" placeholder="8-character room code">
+
+<button onclick="startSender()">
+Connect and Share Screen
+</button>
+
+<video id="localVideo" autoplay muted playsinline></video>
+
+<button class="secondary" onclick="disconnect()">
+Disconnect
+</button>
+
+<p class="status" id="senderStatus"></p>
+
 </div>
 
 <script>
 
-// ========================================
+// ==================================
 // SUPABASE CONFIGURATION
-// ========================================
+// ==================================
 
-const SUPABASE_URL = "https://luihrwntwtyleeqlwqtv.supabase.co";
-const SUPABASE_KEY = "sb_publishable_jkkKbQ3KIVowW5yYiG5dNQ_JyFFilaR";
+var SUPABASE_URL =
+"https://luihrwntwtyleeqlwqtv.supabase.co";
 
-const supabaseClient = window.supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_KEY
-);
+var SUPABASE_KEY =
+"sb_publishable_jkkKbQ3KIVowW5yYiG5dNQ_JyFFilaR";
 
-// ========================================
+var supabaseClient = null;
+
+if (window.supabase &&
+    typeof window.supabase.createClient === "function") {
+  supabaseClient = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+  );
+}
+
+// ==================================
 // GLOBAL VARIABLES
-// ========================================
+// ==================================
 
-let channel = null;
-let peer = null;
-let localStream = null;
-let remoteCandidates = [];
-let currentRole = null;
-let activeCode = null;
+var channel = null;
+var peer = null;
+var localStream = null;
+var remoteCandidates = [];
+var currentRole = null;
 
-// ========================================
+// ==================================
+// HELPERS
+// ==================================
+
+function setStatus(message) {
+  document.getElementById("homeStatus").textContent = message;
+  document.getElementById("receiverStatus").textContent = message;
+  document.getElementById("senderStatus").textContent = message;
+}
+
+// ==================================
 // INTERFACE
-// ========================================
-
+// ==================================
 
 function showReceiver() {
   document.getElementById("home").classList.add("hidden");
   document.getElementById("sender").classList.add("hidden");
   document.getElementById("receiver").classList.remove("hidden");
 
+  currentRole = "receiver";
+
   document.getElementById("room").textContent = "TEST1234";
-  document.getElementById("status").textContent = "Receiver page opened!";
+
+  document.getElementById("receiverStatus").textContent =
+    "Receiver screen opened!";
 }
 
 function showSender() {
   document.getElementById("home").classList.add("hidden");
   document.getElementById("receiver").classList.add("hidden");
   document.getElementById("sender").classList.remove("hidden");
+
+  currentRole = "sender";
 }
 
-
-// ========================================
-// ROOM CODE
-// ========================================
-
-function generateCode() {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let code = "";
-  for (let i = 0; i < 8; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return code;
-}
-
-// ========================================
-// SIGNALING
-// ========================================
+// ==================================
+// SUPABASE CONNECTION TEST
+// ==================================
 
 async function createChannel(code, role) {
-  activeCode = code;
+
+  if (!supabaseClient) {
+    throw new Error("Supabase library did not load.");
+  }
+
+  if (channel) {
+    await supabaseClient.removeChannel(channel);
+    channel = null;
+  }
 
   channel = supabaseClient.channel("usc-" + code, {
     config: {
-      broadcast: { self: false, ack: true }
+      broadcast: {
+        self: false,
+        ack: true
+      }
     }
   });
 
-  channel.on("broadcast", { event: "signal" }, async ({ payload }) => {
-    if (!payload || payload.from === role) return;
-    await handleSignal(payload);
-  });
+  channel.on(
+    "broadcast",
+    { event: "signal" },
+    function(message) {
+      if (!message.payload) return;
+      if (message.payload.from === role) return;
 
-  await new Promise((resolve, reject) => {
-    channel.subscribe(status => {
-      if (status === "SUBSCRIBED") resolve();
-      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-        reject(new Error("Could not connect to signaling server."));
+      handleSignal(message.payload).catch(function(error) {
+        setStatus("Signal error: " + error.message);
+      });
+    }
+  );
+
+  await new Promise(function(resolve, reject) {
+
+    channel.subscribe(function(status, error) {
+
+      if (status === "SUBSCRIBED") {
+        resolve();
       }
+
+      if (status === "CHANNEL_ERROR" ||
+          status === "TIMED_OUT") {
+        reject(error || new Error(status));
+      }
+
     });
+
   });
 }
 
-async function sendSignal(data) {
-  if (!channel) throw new Error("Not connected to a room.");
+// ==================================
+// RECEIVER SERVER TEST
+// ==================================
 
-  const result = await channel.send({
+async function startReceiver() {
+
+  try {
+
+    currentRole = "receiver";
+
+    document.getElementById("receiverStatus").textContent =
+      "Testing Supabase connection...";
+
+    await createChannel("TEST1234", "receiver");
+
+    document.getElementById("receiverStatus").textContent =
+      "SUPABASE CONNECTED!";
+
+  } catch (error) {
+
+    document.getElementById("receiverStatus").textContent =
+      "ERROR: " + error.message;
+
+    console.log(error);
+
+  }
+
+}
+
+// ==================================
+// SIGNALING
+// ==================================
+
+async function sendSignal(data) {
+
+  if (!channel) {
+    throw new Error("No active connection.");
+  }
+
+  var result = await channel.send({
     type: "broadcast",
     event: "signal",
     payload: {
-      ...data,
+      type: data.type,
+      offer: data.offer,
+      answer: data.answer,
+      candidate: data.candidate,
       from: currentRole
     }
   });
 
   if (result !== "ok") {
-    throw new Error("Could not send connection information.");
+    throw new Error("Signal could not be sent.");
   }
+
 }
 
-// ========================================
+// ==================================
 // WEBRTC
-// ========================================
+// ==================================
 
 function createPeer() {
+
   peer = new RTCPeerConnection({
     iceServers: [
-      { urls: "stun:stun.l.google.com:19302" },
-      { urls: "stun:stun.cloudflare.com:3478" }
+      { urls: "stun:stun.l.google.com:19302" }
     ]
   });
 
-  peer.onicecandidate = event => {
+  peer.onicecandidate = function(event) {
+
     if (event.candidate) {
       sendSignal({
         type: "candidate",
         candidate: event.candidate.toJSON()
-      }).catch(console.error);
+      }).catch(console.log);
     }
+
   };
 
-  peer.onconnectionstatechange = () => {
-    const state = peer?.connectionState;
-    if (state === "connected") {
-      setStatus("Screen connected!");
-    } else if (state === "failed") {
-      setStatus("Connection failed. Try again.");
-    } else if (state === "disconnected") {
-      setStatus("Connection interrupted.");
-    }
+  peer.ontrack = function(event) {
+
+    document.getElementById("remoteVideo").srcObject =
+      event.streams[0];
+
+    document.getElementById("receiverStatus").textContent =
+      "Screen received!";
+
   };
 
-  peer.ontrack = event => {
-    remoteVideo.srcObject = event.streams[0];
-    remoteVideo.play().catch(() => {
-      setStatus("Press play on the TV video.");
-    });
+  peer.onconnectionstatechange = function() {
+
+    document.getElementById("receiverStatus").textContent =
+      "Connection: " + peer.connectionState;
+
   };
 
   return peer;
 }
 
-async function addQueuedCandidates() {
-  const queued = remoteCandidates.splice(0);
-
-  for (const candidate of queued) {
-    try {
-      await peer.addIceCandidate(candidate);
-    } catch (error) {
-      console.error("ICE candidate error:", error);
-    }
-  }
-}
+// ==================================
+// SIGNAL HANDLER
+// ==================================
 
 async function handleSignal(data) {
+
   if (data.type === "offer" && currentRole === "receiver") {
+
     if (peer) peer.close();
+
     remoteCandidates = [];
+
     createPeer();
 
     await peer.setRemoteDescription(data.offer);
-    await addQueuedCandidates();
 
-    const answer = await peer.createAnswer();
+    var answer = await peer.createAnswer();
+
     await peer.setLocalDescription(answer);
 
     await sendSignal({
@@ -286,78 +395,70 @@ async function handleSignal(data) {
       answer: peer.localDescription
     });
 
-    setStatus("Connecting to computer...");
   }
 
   else if (data.type === "answer" && currentRole === "sender") {
+
     if (!peer) return;
 
     await peer.setRemoteDescription(data.answer);
-    await addQueuedCandidates();
+
   }
 
   else if (data.type === "candidate" && peer) {
+
     if (peer.remoteDescription) {
       await peer.addIceCandidate(data.candidate);
     } else {
       remoteCandidates.push(data.candidate);
     }
+
   }
+
 }
 
-// ========================================
-// TV RECEIVER
-// ========================================
-
-async function startReceiver() {
-  try {
-    document.getElementById("status").textContent = "Testing Supabase...";
-
-    await createChannel("TEST1234", "receiver");
-
-    document.getElementById("status").textContent =
-      "SUPABASE CONNECTED!";
-  } catch (error) {
-    document.getElementById("status").textContent =
-      "ERROR: " + error.message;
-  }
-}
-
-// ========================================
+// ==================================
 // COMPUTER SENDER
-// ========================================
+// ==================================
 
 async function startSender() {
-  const code = roomInput.value.trim().toUpperCase();
-
-  if (!/^[A-Z0-9]{8}$/.test(code)) {
-    alert("Enter a valid 8-character room code.");
-    return;
-  }
 
   try {
-    setStatus("Requesting screen permission...");
+
+    var code = document.getElementById("roomInput")
+      .value.trim().toUpperCase();
+
+    if (!/^[A-Z0-9]{8}$/.test(code)) {
+      throw new Error("Enter a valid 8-character code.");
+    }
+
+    if (!navigator.mediaDevices ||
+        !navigator.mediaDevices.getDisplayMedia) {
+      throw new Error("Screen sharing is not supported.");
+    }
+
+    setStatus("Choose your screen...");
 
     localStream = await navigator.mediaDevices.getDisplayMedia({
-      video: { frameRate: 30 },
-      audio: true
+      video: true,
+      audio: false
     });
 
-    localVideo.srcObject = localStream;
+    document.getElementById("localVideo").srcObject =
+      localStream;
 
     currentRole = "sender";
-
-    setStatus("Connecting to TV...");
 
     await createChannel(code, "sender");
 
     createPeer();
 
-    localStream.getTracks().forEach(track => {
+    localStream.getTracks().forEach(function(track) {
       peer.addTrack(track, localStream);
     });
 
-    const offer = await peer.createOffer();
+    var offer = await peer.createOffer();
+
     await peer.setLocalDescription(offer);
 
     await sendSignal({
@@ -365,22 +466,27 @@ async function startSender() {
       offer: peer.localDescription
     });
 
-    localStream.getVideoTracks()[0].onended = disconnect;
+    setStatus("Waiting for TV...");
 
-    setStatus("Offer sent. Waiting for TV...");
   } catch (error) {
-    setStatus(error.message);
-    console.error(error);
+
+    setStatus("ERROR: " + error.message);
+    console.log(error);
+
   }
+
 }
 
-// ========================================
+// ==================================
 // DISCONNECT
-// ========================================
+// ==================================
 
 async function disconnect() {
+
   if (localStream) {
-    localStream.getTracks().forEach(track => track.stop());
+    localStream.getTracks().forEach(function(track) {
+      track.stop();
+    });
     localStream = null;
   }
 
@@ -389,43 +495,44 @@ async function disconnect() {
     peer = null;
   }
 
-  if (channel) {
-    const oldChannel = channel;
+  if (channel && supabaseClient) {
+    var oldChannel = channel;
     channel = null;
     await supabaseClient.removeChannel(oldChannel);
   }
 
   remoteCandidates = [];
-  activeCode = null;
 
-  remoteVideo.srcObject = null;
-  localVideo.srcObject = null;
+  document.getElementById("remoteVideo").srcObject = null;
+  document.getElementById("localVideo").srcObject = null;
+
+  document.getElementById("receiver").classList.add("hidden");
+  document.getElementById("sender").classList.add("hidden");
+  document.getElementById("home").classList.remove("hidden");
 
   setStatus("Disconnected.");
 
-  receiver.classList.add("hidden");
-  sender.classList.add("hidden");
-  home.classList.remove("hidden");
 }
 
-// ========================================
-// HELPERS
-// ========================================
-
-function setStatus(message) {
-  document.getElementById("status").textContent = message;
-}
+// ==================================
+// FULLSCREEN
+// ==================================
 
 function toggleFullscreen() {
-  const video = remoteVideo;
+
+  var video = document.getElementById("remoteVideo");
 
   if (video.requestFullscreen) {
     video.requestFullscreen();
   } else if (video.webkitEnterFullscreen) {
     video.webkitEnterFullscreen();
   }
+
 }
 
+console.log("Universal Screen Connect loaded.");
+
 </script>
+
 </body>
 </html>
