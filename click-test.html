@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>TV Click Test</title>
+</head>
+<body style="background:#222;color:white;text-align:center;padding:40px;font-size:24px;">
+
+  <h2>TV Button Test</h2>
+
+  <button id="testButton" style="font-size:24px;padding:20px;">
+    PRESS THIS BUTTON
+  </button>
+
+  <p id="result">Waiting for button press...</p>
+
+  <script>
+    document.getElementById("testButton").onclick = function() {
+      document.getElementById("result").innerHTML = "SUCCESS! JavaScript clicks work.";
+    };
+  </script>
+
+</body>
+</html>
